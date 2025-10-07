@@ -195,9 +195,9 @@ touchscreen:
   #  swap_xy: true
     mirror_x: false
     mirror_y: false
-  on_touch:
-    - lambda: |-
-        ESP_LOGI("Touch", "Touch detected at x=%d, y=%d", touch.x, touch.y);
+#  on_touch:
+#    - lambda: |-
+#        ESP_LOGI("Touch", "Touch detected at x=%d, y=%d", touch.x, touch.y);
   on_update:
     - lambda: |-
         for (auto touch: touches)  {
@@ -205,7 +205,42 @@ touchscreen:
               ESP_LOGI("Touch points:", "id=%d x=%d, y=%d x.raw=%d, y.raw=%d", touch.id, touch.x, touch.y, touch.x_raw, touch.y_raw);
             }
         }
+  on_touch:
+    - lambda: |-
+        ESP_LOGI("Touch", "Touch detected at x=%d, y=%d", touch.x, touch.y);
+        
+        static int last_x = -1;
+        static int last_y = -1;
 
+        if (touch.state == LV_INDEV_STATE_PR) {
+          // Store the initial touch position
+          if (last_x == -1 && last_y == -1) {
+            last_x = touch.x;
+            last_y = touch.y;
+          }
+        } else if (touch.state == LV_INDEV_STATE_REL) {
+          // Calculate the swipe direction
+          if (last_x != -1 && last_y != -1) {
+            int delta_x = touch.x - last_x;
+            int delta_y = touch.y - last_y;
+
+            if (abs(delta_x) > abs(delta_y)) {
+              if (delta_x > 30) {
+                // Swipe right
+                - lvgl.page.previous:
+                    id: main_page
+              } else if (delta_x < -30) {
+                // Swipe left
+                - lvgl.page.next:
+                    id: music_page
+              }
+            }
+
+            // Reset the touch positions
+            last_x = -1;
+            last_y = -1;
+          }
+        }
 
 ## Text Sensors for State Monitoring
 text_sensor:
@@ -256,6 +291,7 @@ image:
 
 # LVGL setup with LCARS-inspired layout
 lvgl:
+  id: lvgl_id  # Assign an ID to the LVGL component
   displays: my_display
   touchscreens: my_touch
   on_idle:
@@ -395,3 +431,24 @@ lvgl:
                         text_font: roboto_20
                         text_color: lcars_black
                         # y: 40
+
+    # New page
+    - id: music_page
+      widgets:
+        - obj:
+            x: 0
+            y: 0
+            width: 480
+            height: 480
+            bg_color: lcars_blue_gray
+            bg_opa: 100%  # Fully opaque
+            border_width: 0
+            pad_all: 0
+            radius: 0
+            widgets:
+              - label:
+                  text: "New Page"
+                  align: CENTER
+                  text_font: roboto_50
+                  text_color: lcars_white
+

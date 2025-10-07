@@ -1,0 +1,574 @@
+########################################################################################
+# WAVIN SENTIO for Home Assistant – ESPHome (addresses aligned to Sentio SW Ver. 6)   #
+########################################################################################
+
+substitutions:
+  device_name: heater-bryggers-02
+  friendly_name: heater-bryggers-02
+  log_level: INFO            # Changed to VERBOSE for detailed Modbus debugging
+  update_interval: 10s
+
+  # CHANNEL ID´S
+  channel_1:  Bryggers Bad
+  channel_2:  Bryggers
+  channel_3:  Entre Bad
+  channel_4:  Stuen
+
+  # UART / RS-485 wiring (adjust if needed)
+  rx_pin: 20
+  tx_pin: 21
+
+  # Wi‑Fi
+  ssid_set: !secret wifi_ssid
+  password_set: !secret wifi_password
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  name_add_mac_suffix: false
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+# Logging
+logger:
+  level: ${log_level}
+  baud_rate: 0
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "MqDNCIkLV365+6Jg8/g9n/NfX4flImYqXkTY0nCLoKo="
+
+
+ota:
+  - platform: esphome
+    password: "945ac67ddcae11048f6a488672b6aadb"
+
+wifi:
+  ssid: ${ssid_set}
+  password: ${password_set}
+  # Secure fallback hotspot
+  ap:
+    ssid: "Wavin Fallback Hotspot"
+    password: !secret fallback_ap_password
+
+captive_portal:
+
+# RS485 / Modbus
+uart:
+  id: uart_modbus
+  rx_pin: ${rx_pin}
+  tx_pin: ${tx_pin}
+  baud_rate: 19200
+  parity: NONE
+  stop_bits: 1
+
+modbus:
+  id: modbus_id
+  uart_id: uart_modbus
+  flow_control_pin: 10          # Set to your RS485 DE/RE pin if not auto‑flow
+  send_wait_time: 1000ms        # Increased for better reliability with slow devices
+
+modbus_controller:
+  id: sentio_modbus_controller
+  address: 1
+  modbus_id: modbus_id
+  update_interval: ${update_interval}
+  command_throttle: 500ms       # Increased spacing between commands
+  offline_skip_updates: 3       # Skip updates when device is offline
+
+
+external_components:
+  - source: github://nic6911/esphome_components@Wavin_Sentio
+    refresh: 0s  
+#  - source: github://heinekmadsen/esphome_wavinahc9000v3
+#    components: [wavin_ahc9000]
+#    refresh: 0s
+
+sentio:
+
+# =========================
+#   TEXT SENSORS (mapped)
+# =========================
+text_sensor:
+  # Room 1 HVAC state – Input Register 00102
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_1} HVAC state"
+    id: room1_hvac_state
+    entity_category: diagnostic
+    register_type: read
+    address: 102                 # 00102 – General Heating/Cooling state
+    response_size: 2
+    raw_encode: HEXBYTES
+    lambda: |-
+      uint16_t v = modbus_controller::word_from_hex_str(x, 0);
+      switch (v) {
+        case 1: return std::string("IDLE");
+        case 2: return std::string("HEATING");
+        case 3: return std::string("COOLING");
+        case 4: return std::string("BLOCKED_HEATING");
+        case 5: return std::string("BLOCKED_COOLING");
+        default: return std::string("UNKNOWN");
+      }
+
+  # Room 2 HVAC state – Input Register 00202
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_2} HVAC state"
+    id: room2_hvac_state
+    entity_category: diagnostic
+    register_type: read
+    address: 202                 # 00202
+    response_size: 2
+    raw_encode: HEXBYTES
+    lambda: |-
+      uint16_t v = modbus_controller::word_from_hex_str(x, 0);
+      switch (v) {
+        case 1: return std::string("IDLE");
+        case 2: return std::string("HEATING");
+        case 3: return std::string("COOLING");
+        case 4: return std::string("BLOCKED_HEATING");
+        case 5: return std::string("BLOCKED_COOLING");
+        default: return std::string("UNKNOWN");
+      }
+
+  # Room 3 HVAC state – Input Register 00202
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_3} HVAC state"
+    id: room3_hvac_state
+    entity_category: diagnostic
+    register_type: read
+    address: 302                 # 00202
+    response_size: 2
+    raw_encode: HEXBYTES
+    lambda: |-
+      uint16_t v = modbus_controller::word_from_hex_str(x, 0);
+      switch (v) {
+        case 1: return std::string("IDLE");
+        case 2: return std::string("HEATING");
+        case 3: return std::string("COOLING");
+        case 4: return std::string("BLOCKED_HEATING");
+        case 5: return std::string("BLOCKED_COOLING");
+        default: return std::string("UNKNOWN");
+      }
+
+
+  # Room 1 Blocking Source – Input Register 00103
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_1} Blocking Source"
+    id: room1_blocking_source
+    entity_category: diagnostic
+    register_type: read
+    address: 103                 # 00103
+    response_size: 2
+    raw_encode: HEXBYTES
+    lambda: |-
+      const uint16_t v = modbus_controller::word_from_hex_str(x, 0);
+      switch (v) {
+        case 0:  return std::string("NONE");
+        case 1:  return std::string("UNKNOWN");
+        case 2:  return std::string("CONTACT");
+        case 3:  return std::string("FLOOR_TEMP");
+        case 4:  return std::string("LOW_ENERGY");
+        case 5:  return std::string("AIR_TEMP");
+        case 6:  return std::string("DEW_POINT");
+        case 7:  return std::string("OUTDOOR_TEMP");
+        case 8:  return std::string("FAULT");
+        case 9:  return std::string("FAULT_HTCO");
+        case 10: return std::string("PERIODIC_ACTIVATION");
+        default: return std::string("UNKNOWN(") + std::to_string(v) + ")";
+      }
+
+  # Room 2 Blocking Source – Input Register 00203
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_2} Blocking Source"
+    id: room2_blocking_source
+    entity_category: diagnostic
+    register_type: read
+    address: 203                 # 00203
+    response_size: 2
+    raw_encode: HEXBYTES
+    lambda: |-
+      const uint16_t v = modbus_controller::word_from_hex_str(x, 0);
+      switch (v) {
+        case 0:  return std::string("NONE");
+        case 1:  return std::string("UNKNOWN");
+        case 2:  return std::string("CONTACT");
+        case 3:  return std::string("FLOOR_TEMP");
+        case 4:  return std::string("LOW_ENERGY");
+        case 5:  return std::string("AIR_TEMP");
+        case 6:  return std::string("DEW_POINT");
+        case 7:  return std::string("OUTDOOR_TEMP");
+        case 8:  return std::string("FAULT");
+        case 9:  return std::string("FAULT_HTCO");
+        case 10: return std::string("PERIODIC_ACTIVATION");
+        default: return std::string("UNKNOWN(") + std::to_string(v) + ")";
+      }
+
+  # Room 3 Blocking Source – Input Register 00203
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_3} Blocking Source"
+    id: room3_blocking_source
+    entity_category: diagnostic
+    register_type: read
+    address: 303                 # 00203
+    response_size: 2
+    raw_encode: HEXBYTES
+    lambda: |-
+      const uint16_t v = modbus_controller::word_from_hex_str(x, 0);
+      switch (v) {
+        case 0:  return std::string("NONE");
+        case 1:  return std::string("UNKNOWN");
+        case 2:  return std::string("CONTACT");
+        case 3:  return std::string("FLOOR_TEMP");
+        case 4:  return std::string("LOW_ENERGY");
+        case 5:  return std::string("AIR_TEMP");
+        case 6:  return std::string("DEW_POINT");
+        case 7:  return std::string("OUTDOOR_TEMP");
+        case 8:  return std::string("FAULT");
+        case 9:  return std::string("FAULT_HTCO");
+        case 10: return std::string("PERIODIC_ACTIVATION");
+        default: return std::string("UNKNOWN(") + std::to_string(v) + ")";
+      }
+
+# =========================
+#         SENSORS
+# =========================
+sensor:
+  
+  # Room 1 – Input Registers 00104..00106
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_1} Air mode"
+    id: room1_mode
+    register_type: read
+    address: 102
+
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_1} temperatur"
+    id: room1_temperature
+    register_type: read
+    address: 104                 # 00104 – Air temperature
+    value_type: U_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01            # Adjust if your unit uses a different scale
+
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_1} gulv temperatur"
+    id: room1_floor_temperature
+    register_type: read
+    address: 105                 # 00105 – Floor temperature
+    value_type: U_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.001
+
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_1} luftfugtighed"
+    id: room1_humidity
+    register_type: read
+    address: 106                 # 00106 – Relative humidity
+    value_type: U_WORD
+    unit_of_measurement: "%"
+    device_class: humidity
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_1} Desired Temperature"
+    id: room1_desired_temp
+    register_type: read
+    address: 101                 # 00101
+    value_type: U_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+
+
+   # Room 2 – Input Registers 00204..00206
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_2} Air mode"
+    id: room2_mode
+    register_type: read
+    address: 202
+
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_2} temperatur"
+    id: room2_temperature
+    register_type: read
+    address: 204                 # 00204 – Air temperature
+    value_type: U_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+  
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_2} gulv temperatur"
+    id: room2_floor_temperature
+    register_type: read
+    address: 205                 # 00205 – Floor temperature
+    value_type: U_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.001
+  
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_2} luftfugtighed"
+    id: room2_humidity
+    register_type: read
+    address: 206                 # 00206 – Relative humidity
+    value_type: U_WORD
+    unit_of_measurement: "%"
+    device_class: humidity
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_2} Desired Temperature"
+    id: room2_desired_temp
+    register_type: read
+    address: 201                 # 00201
+    value_type: U_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+
+
+   # Room 3 – Input Registers 00204..00206
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_3} Air mode"
+    id: room3_mode
+    register_type: read
+    address: 302
+
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_3} temperatur"
+    id: room3_temperature
+    register_type: read
+    address: 304                 # 00204 – Air temperature
+    value_type: U_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+  
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_3} gulv temperatur"
+    id: room3_floor_temperature
+    register_type: read
+    address: 305                 # 00205 – Floor temperature
+    value_type: U_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.001
+  
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_3} luftfugtighed"
+    id: room3_humidity
+    register_type: read
+    address: 306                 # 00206 – Relative humidity
+    value_type: U_WORD
+    unit_of_measurement: "%"
+    device_class: humidity
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_3} Desired Temperature"
+    id: room3_desired_temp
+    register_type: read
+    address: 301                 # 00201
+    value_type: U_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+
+
+  # HCC1 Pump State – Input Register 07704 (1=IDLE, 2=ON)
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "HCC1 Pump State (raw)"
+    id: hcc1_pump_state
+    entity_category: diagnostic
+    register_type: read
+    address: 7704                # 07704
+    value_type: U_WORD
+
+# =========================
+#         NUMBERS
+# =========================
+number:
+  # Room temperature setpoints (Holding 00119 / 00219)
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_1} temperatur setpunkt"
+    id: room1_setpoint
+    min_value: 10.0
+    max_value: 30.0
+    step: 0.5
+    address: 119
+    force_new_range: true
+    use_write_multiple: true 
+    write_lambda: "payload = modbus_controller::float_to_payload(x*100, modbus_controller::SensorValueType::U_WORD); return x;"
+    lambda: "return x*0.01;"
+    internal: true
+
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_2} temperatur setpunkt"
+    id: room2_setpoint
+    min_value: 10.0
+    max_value: 30.0
+    step: 0.5
+    address: 219
+    force_new_range: true
+    use_write_multiple: true 
+    write_lambda: "payload = modbus_controller::float_to_payload(x*100, modbus_controller::SensorValueType::U_WORD); return x;"
+    lambda: "return x*0.01;"
+    internal: true
+
+  - platform: modbus_controller
+    modbus_controller_id: sentio_modbus_controller
+    name: "${channel_3} temperatur setpunkt"
+    id: room3_setpoint
+    min_value: 10.0
+    max_value: 30.0
+    step: 0.5
+    address: 319
+    force_new_range: true
+    use_write_multiple: true 
+    write_lambda: "payload = modbus_controller::float_to_payload(x*100, modbus_controller::SensorValueType::U_WORD); return x;"
+    lambda: "return x*0.01;"
+    internal: true
+
+# =========================
+#     BINARY SENSORS
+# =========================
+binary_sensor:
+  # Calling for Heat if HVAC state == HEATING
+  - platform: template
+    name: "${channel_1} Calling for Heat"
+    id: room1_calling_for_heat
+    device_class: heat
+    lambda: |-
+      return (id(room1_hvac_state).state == "HEATING");
+
+  # TEMPORARILY COMMENTED OUT - depends on room2_hvac_state which is commented out
+  - platform: template
+    name: "${channel_2} Calling for Heat"
+    id: room2_calling_for_heat
+    device_class: heat
+    lambda: |-
+      return (id(room2_hvac_state).state == "HEATING");
+
+  - platform: template
+    name: "${channel_3} Calling for Heat"
+    id: room3_calling_for_heat
+    device_class: heat
+    lambda: |-
+      return (id(room3_hvac_state).state == "HEATING");
+
+
+  # Pump Running if HCC1 Pump State == 2 (ON)
+  # TEMPORARILY COMMENTED OUT - depends on hcc1_pump_state which is also commented out
+  # - platform: template
+  #   name: "HCC1 Pump Running"
+  #   id: hcc1_pump_running
+  #   entity_category: diagnostic
+  #   lambda: |-
+  #     return (int(id(hcc1_pump_state).state) == 2);
+
+switch:
+  # COMMENTED OUT - Coil registers 4605 and 4613 don't exist on this device
+  # Device returns Modbus Exception 2 (Illegal Data Address)
+  # These registers are not supported by your Wavin Sentio model/firmware
+  # - platform: modbus_controller
+  #   modbus_controller_id: sentio_modbus_controller
+  #   name: "${channel_1} Comfort Mode"
+  #   id: room1_comfort_mode
+  #   register_type: coil
+  #   address: 4605
+  #   bitmask: 0x01
+  #
+  # - platform: modbus_controller
+  #   modbus_controller_id: sentio_modbus_controller
+  #   name: "${channel_2} Comfort Mode"
+  #   id: room2_comfort_mode
+  #   register_type: coil
+  #   address: 4613
+  #   bitmask: 0x01
+  #
+  # - platform: modbus_controller
+  #   modbus_controller_id: sentio_modbus_controller
+  #   name: "${channel_3} Comfort Mode"
+  #   id: room3_comfort_mode
+  #   register_type: coil
+  #   address: 4613
+  #   bitmask: 0x01
+
+
+#########################
+#### CLIMATE ENTITIES ###
+#########################
+
+climate:
+  - platform: sentio
+    name: "${channel_1}"
+    current_temp_sensor_id: room1_temperature
+    target_temp_sensor_id: room1_setpoint
+    mode_select_id: room1_mode
+
+  - platform: sentio
+    name: "${channel_2}"
+    current_temp_sensor_id: room2_temperature
+    target_temp_sensor_id: room2_setpoint
+    mode_select_id: room2_mode
+
+  - platform: sentio
+    name: "${channel_3}"
+    current_temp_sensor_id: room3_temperature
+    target_temp_sensor_id: room3_setpoint
+    mode_select_id: room3_mode
