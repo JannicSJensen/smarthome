@@ -15,6 +15,12 @@ substitutions:
   ssid_set: !secret wifi_ssid
   password_set: !secret wifi_password
 
+  # Friendly names for channels (up to 16)
+  channel_01_friendly_name: Bryggers Bad
+  channel_02_friendly_name: Bryggers
+  channel_03_friendly_name: Entre Bad
+  channel_04_friendly_name: Stuen
+
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
@@ -71,7 +77,7 @@ modbus_controller:
 
 # External Component - Wavin Sentio v2
 external_components:
-  - source: github://JannicSJensen/smarthome/tree/main/ESPHome/wavin%20sentio
+  - source: github://JannicSJensen/smarthome/ESPHome/wavin_sentio/
     components: [wavin_sentio]
     refresh: 0s
 
@@ -81,13 +87,12 @@ wavin_sentio:
   modbus_controller_id: sentio_controller
   update_interval: 10s
   poll_channels_per_cycle: 2  # Poll 2 channels per update cycle
-  flow_control_pin: ${flow_control_pin}  # Optional RS485 direction control
   
   # Friendly names for channels (up to 16)
-  channel_01_friendly_name: Bryggers Bad
-  channel_02_friendly_name: Bryggers
-  channel_03_friendly_name: Entre Bad
-  channel_04_friendly_name: Stuen
+  channel_01_friendly_name: ${channel_01_friendly_name}
+  channel_02_friendly_name: ${channel_02_friendly_name}
+  channel_03_friendly_name: ${channel_03_friendly_name}
+  channel_04_friendly_name: ${channel_04_friendly_name}
   # Add more as needed...
 
 # Climate Entities
