@@ -40,12 +40,12 @@ logger:
 # Enable Home Assistant API
 api:
   encryption:
-    key: "MqDNCIkLV365+6Jg8/g9n/NfX4flImYqXkTY0nCLoKo="
+    key: !secret heater_api_key
 
 
 ota:
   - platform: esphome
-    password: "945ac67ddcae11048f6a488672b6aadb"
+    password: !secret heater_ota
 
 wifi:
   ssid: ${ssid_set}

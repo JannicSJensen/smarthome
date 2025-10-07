@@ -8,9 +8,8 @@ substitutions:
   friendly_name: "Wavin Sentio"
   
   # UART / RS-485 wiring
-  rx_pin: GPIO16
-  tx_pin: GPIO17
-  flow_control_pin: GPIO10
+  rx_pin: 20
+  tx_pin: 21
   
   # Wi-Fi
   ssid_set: !secret wifi_ssid
@@ -21,7 +20,7 @@ esphome:
   friendly_name: ${friendly_name}
 
 esp32:
-  board: esp32dev
+  board: esp32-c3-devkitm-1
   framework:
     type: arduino
 
@@ -35,11 +34,11 @@ logger:
 # Enable Home Assistant API
 api:
   encryption:
-    key: !secret api_encryption_key
+    key: !secret heater_api_key
 
 ota:
   - platform: esphome
-    password: !secret ota_password
+    password: !secret heater_ota
 
 wifi:
   ssid: ${ssid_set}
@@ -72,7 +71,7 @@ modbus_controller:
 
 # External Component - Wavin Sentio v2
 external_components:
-  - source: github://yourusername/esphome_sentio_v2
+  - source: github://JannicSJensen/smarthome/tree/main/ESPHome/wavin%20sentio
     components: [wavin_sentio]
     refresh: 0s
 
